@@ -1,9 +1,9 @@
 {
-  "code": "trampoline",
+  "code": "gate_and",
   "blockmaterial": "wood",
   "creativeinventory": { "general": [ "*" ] },
   "textures": {
-    "all": { "base": "block/trampoline" }
+    "all": { "base": "block/gate_and" }
   },
   "sounds": {
     "place": "game:block/plant",

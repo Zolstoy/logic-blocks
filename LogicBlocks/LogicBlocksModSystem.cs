@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Client;
+﻿using LogicBlocks.Blocks;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
@@ -11,6 +12,8 @@ namespace LogicBlocks
         // Useful for registering block/entity classes on both sides
         public override void Start(ICoreAPI api)
         {
+            // Fix: Use api.CurrentMod.Info.ModID instead of Mod.Info.ModID
+            api.RegisterBlockClass(Mod.Info.ModID + ".gate_and", typeof(BlockGateAnd));
             Mod.Logger.Notification("Hello from template mod: " + api.Side);
         }
 

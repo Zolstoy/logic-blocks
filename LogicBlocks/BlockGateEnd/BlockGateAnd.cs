@@ -7,7 +7,7 @@ namespace LogicBlocks.Blocks
     {
         public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack byItemStack = null)
         {
-            api.RegisterBlockClass(Mod.Info.ModID + ".gate_and", typeof(BlockGateAnd));
+
             api.Logger.Event("Block Placed!");
             base.OnBlockPlaced(world, blockPos, byItemStack);
         }
