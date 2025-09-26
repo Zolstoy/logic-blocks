@@ -1,5 +1,4 @@
-﻿using LogicBlocks.Blocks;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
@@ -9,9 +8,7 @@ namespace LogicBlocks
     public class LogicBlocksModSystem : ModSystem
     {
 
-        public 
-
-        // ----
+        // 
         public override void Start(ICoreAPI api)
         {
             api.RegisterBlockClass(Mod.Info.ModID + ".gate_and", typeof(BlockGateAnd));
