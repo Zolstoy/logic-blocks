@@ -8,11 +8,12 @@ namespace LogicBlocks
 {
     public class LogicBlocksModSystem : ModSystem
     {
-        // Called on server and client
-        // Useful for registering block/entity classes on both sides
+
+        public 
+
+        // ----
         public override void Start(ICoreAPI api)
         {
-            // Fix: Use api.CurrentMod.Info.ModID instead of Mod.Info.ModID
             api.RegisterBlockClass(Mod.Info.ModID + ".gate_and", typeof(BlockGateAnd));
             Mod.Logger.Notification("Hello from template mod: " + api.Side);
         }

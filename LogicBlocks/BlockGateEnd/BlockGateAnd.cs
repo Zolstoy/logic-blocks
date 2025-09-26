@@ -1,6 +1,8 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+using LogicBlocks;
+
 namespace LogicBlocks.Blocks
 {
     internal class BlockGateAnd : Block
@@ -16,6 +18,12 @@ namespace LogicBlocks.Blocks
         {
             api.Logger.Event("Block Broken!");
             base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+        }
+
+        public virtual bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            blockSel.
+            return true;
         }
     }
 }
