@@ -1,5 +1,6 @@
 {
   "code": "pulse",
+  "class": "logicblocks.pulse",
   "creativeinventory": {
     "general": [ "*" ],
     "examplemod": [ "*" ]
