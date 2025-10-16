@@ -1,5 +1,6 @@
 {
   "code": "connector",
+  "class": "logicblocks.connector",
   "creativeinventory": {
     "general": [ "*" ]
   },
