@@ -1,4 +1,4 @@
-﻿using LogicBlocks.BLocks;
+﻿using LogicBlocks.Blocks;
 using LogicBlocks.Items;
 using System.Collections.Generic;
 using Vintagestory.API.Client;

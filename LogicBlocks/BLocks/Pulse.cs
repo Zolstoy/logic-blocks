@@ -5,7 +5,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
-namespace LogicBlocks.BLocks
+namespace LogicBlocks.Blocks
 {
 
     internal class Pulse : Block
@@ -19,7 +19,7 @@ namespace LogicBlocks.BLocks
             connected_blocks = [];
         }
 
-        public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack byItemStack = null)
+        public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack? byItemStack = null)
         {
             position = blockPos.Copy();
             base.OnBlockPlaced(world, blockPos, byItemStack);
@@ -27,9 +27,14 @@ namespace LogicBlocks.BLocks
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            foreach (Block block in connected_blocks) {
+            foreach (Block block in connected_blocks)
+            {
 
                 var pulse = block as Pulse;
+                if (pulse != null)
+                {
+                    return;
+                }
                 var lineMesh = new MeshData(2, 0, false, false, false, false);
 
                 lineMesh.AddVertex(position.X, position.Y, position.Z, 1, 1);
