@@ -23,8 +23,13 @@ namespace LogicBlocks.Blocks
             connected_blocks = [];
         }
 
-        public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack? byItemStack = null)
+        public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+        }
+
+        public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack? byItemStack = null)
+        {            
             position = blockPos.Copy();
             base.OnBlockPlaced(world, blockPos, byItemStack);
         }
@@ -36,17 +41,15 @@ namespace LogicBlocks.Blocks
                 capi.Logger.Event("FOR CONNECTED BLOCK");
 
                 var pulse = block as Pulse;
-                if (pulse != null)
+                if (pulse == null)
                 {
+                    capi.Logger.Event("-> CONNECTED BLOCK REMOVED");
                     return;
                 }
 
                 if (mesh == null)
                 {
                     Shape shape = Vintagestory.API.Common.Shape.TryGet(api, "logicblocks:shapes/block/mymesh.json");
-                    //IAsset asset = api.Assets.Get(new AssetLocation("logicblocks", "shapes/block/mymesh.json"));
-                    //Shape shape = asset.ToObject<Shape>();
-
                     var tesselator = ((ICoreClientAPI)api).Tesselator;
                     tesselator.TesselateShape(this, shape, out mesh_data);
                     mesh = capi.Render.UploadMesh(mesh_data);
