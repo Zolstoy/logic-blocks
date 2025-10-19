@@ -10,7 +10,7 @@ namespace LogicBlocks.Blocks
 
     internal class Pulse : Block
     {
-        public BlockPos position;
+        public Vec3d position;
         public List<Block> connected_blocks;
         public MeshData? mesh_data;
         public MeshRef? mesh;
@@ -19,7 +19,7 @@ namespace LogicBlocks.Blocks
         {
 
 
-            position = new BlockPos(0, 0, 0);
+            position = new Vec3d();
             connected_blocks = [];
         }
 
@@ -30,7 +30,7 @@ namespace LogicBlocks.Blocks
 
         public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack? byItemStack = null)
         {            
-            position = blockPos.Copy();
+            position = blockPos.ToVec3d();
             base.OnBlockPlaced(world, blockPos, byItemStack);
         }
 
@@ -55,10 +55,11 @@ namespace LogicBlocks.Blocks
                     mesh = capi.Render.UploadMesh(mesh_data);
                 }
 
-                capi.Logger.Event("RENDERING");
+                capi.Logger.Event("RENDERING: " + position.X + ", " + position.Y + ", " + position.Z);
 
                 capi.Render.GlPushMatrix();
-                capi.Render.GlTranslate(position.X, position.Y, position.Z);
+                capi.Render.GlTranslate(position.X + 10, position.Y + 10, position.Z + 10);
+                capi.Render.GlScale(3, 3, 3);
                 capi.Render.RenderMesh(mesh);
                 capi.Render.GlPopMatrix();
 
@@ -66,5 +67,7 @@ namespace LogicBlocks.Blocks
                 base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
             }
         }
+
     }
+
 }
