@@ -12,9 +12,13 @@ namespace LogicBlocks.Blocks
     {
         public BlockPos position;
         public List<Block> connected_blocks;
+        public MeshData? mesh_data;
+        public MeshRef? mesh;
 
         public Pulse()
         {
+
+
             position = new BlockPos(0, 0, 0);
             connected_blocks = [];
         }
@@ -29,20 +33,33 @@ namespace LogicBlocks.Blocks
         {
             foreach (Block block in connected_blocks)
             {
+                capi.Logger.Event("FOR CONNECTED BLOCK");
 
                 var pulse = block as Pulse;
                 if (pulse != null)
                 {
                     return;
                 }
-                var lineMesh = new MeshData(2, 0, false, false, false, false);
 
-                lineMesh.AddVertex(position.X, position.Y, position.Z, 1, 1);
-                lineMesh.AddVertex(pulse.position.X, pulse.position.Y, pulse.position.Z, 1, 1);
+                if (mesh == null)
+                {
+                    Shape shape = Vintagestory.API.Common.Shape.TryGet(api, "logicblocks:shapes/block/mymesh.json");
+                    //IAsset asset = api.Assets.Get(new AssetLocation("logicblocks", "shapes/block/mymesh.json"));
+                    //Shape shape = asset.ToObject<Shape>();
 
-                var mesh_ref = capi.Render.UploadMesh(lineMesh);
+                    var tesselator = ((ICoreClientAPI)api).Tesselator;
+                    tesselator.TesselateShape(this, shape, out mesh_data);
+                    mesh = capi.Render.UploadMesh(mesh_data);
+                }
 
-                capi.Render.RenderMesh(mesh_ref);
+                capi.Logger.Event("RENDERING");
+
+                capi.Render.GlPushMatrix();
+                capi.Render.GlTranslate(position.X, position.Y, position.Z);
+                capi.Render.RenderMesh(mesh);
+                capi.Render.GlPopMatrix();
+
+
                 base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
             }
         }
