@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -22,6 +23,7 @@ namespace LogicBlocks.Blocks
 
         public override void Initialize(ICoreAPI api)
         {
+            api.Logger.Event("PULSE INIT");
             this.capi = api as ICoreClientAPI;
 
             if (this.capi == null)
@@ -63,9 +65,16 @@ namespace LogicBlocks.Blocks
             {
                 if (block == null) continue;
 
+                var ray = (block.Pos - Pos).ToVec3d();
+                var dist = ray.Length();
+                ray = ray.Normalize();
+                var angle = Math.Acos(ray.Dot(new Vec3d(1, 0, 0)));
+
+                capi.Logger.Event("Angle is " + angle);
                 Matrixf modelMat = new Matrixf()
                     .Identity()
-                    .Translate(block.Pos.X - cam.X + 0.5, block.Pos.Y - cam.Y + 1, block.Pos.Z - cam.Z + 0.5)
+                    .Translate(block.Pos.X - cam.X, block.Pos.Y - cam.Y + 1, block.Pos.Z - cam.Z)
+                    .RotateY((float)angle)
                     .Scale(1f, 1f, 1f);
 
                 prog.ModelMatrix = modelMat.Values;
