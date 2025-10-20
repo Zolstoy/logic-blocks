@@ -27,6 +27,11 @@ namespace LogicBlocks.Items
             {
                 byEntity.Api.Logger.Event("SECOND CONNECT AT " + blockSel.Position);
                 var pulse = byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as Pulse;
+                if (pulse == null)
+                {
+                    byEntity.Api.Logger.Event("CRITICAL: BLOCK NOT A PULSE AT " + blockSel.Position);
+                    return;
+                }
                 first_block.connected_blocks.Add(pulse);
                 first_block = null;
             }

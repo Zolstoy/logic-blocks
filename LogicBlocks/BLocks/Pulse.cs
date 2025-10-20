@@ -40,25 +40,44 @@ namespace LogicBlocks.Blocks
             meshref = this.capi.Render.UploadMesh(meshdata);
         }
 
-
-
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
-            if (capi == null || stage != EnumRenderStage.Opaque)
-                return;
+            if (capi == null || stage != EnumRenderStage.Opaque) return;
+            if (meshref == null) return;
+
+            IRenderAPI rpi = capi.Render;
             Vec3d cam = capi.World.Player.Entity.CameraPos;
+
+            IStandardShaderProgram prog = rpi.StandardShader;
+            prog.Use();
+
+            prog.RgbaAmbientIn = rpi.AmbientColor;
+            prog.RgbaFogIn = rpi.FogColor;
+            prog.FogMinIn = rpi.FogMin;
+            prog.FogDensityIn = rpi.FogDensity;
+            prog.RgbaLightIn = new Vec4f(1, 1, 1, 1);
+            prog.RgbaGlowIn = new Vec4f(0, 0, 0, 0);
+            prog.Tex2D = capi.BlockTextureAtlas.AtlasTextures[0].TextureId;
 
             foreach (BlockEntity block in connected_blocks)
             {
                 if (block == null) continue;
 
-                capi.Render.GlPushMatrix();
-                capi.Render.GlScale(2.0f, 2.0f, 2.0f);
-                capi.Render.GlTranslate(block.Pos.X - cam.X - 0.5, block.Pos.Y - cam.Y, block.Pos.Z - cam.Z - 0.5);
-                capi.Render.RenderMesh(meshref);
-                capi.Render.GlPopMatrix();
+                Matrixf modelMat = new Matrixf()
+                    .Identity()
+                    .Translate(block.Pos.X - cam.X + 0.5, block.Pos.Y - cam.Y + 1, block.Pos.Z - cam.Z + 0.5)
+                    .Scale(1f, 1f, 1f);
+
+                prog.ModelMatrix = modelMat.Values;
+                prog.ViewMatrix = rpi.CameraMatrixOriginf;
+                prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
+
+                rpi.RenderMesh(meshref);
             }
+
+            prog.Stop();
         }
+
 
         public void Dispose()
         {
