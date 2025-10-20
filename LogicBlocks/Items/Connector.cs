@@ -8,7 +8,7 @@ namespace LogicBlocks.Items
 {
     internal class Connector : Item
     {
-        Block? first_block;
+        Pulse? first_block;
 
         public override void OnHeldUseStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel,
             EnumHandInteract useType, bool firstEvent, ref EnumHandHandling handling)
@@ -24,14 +24,15 @@ namespace LogicBlocks.Items
 
             if (first_block != null)
             {
-                byEntity.Api.Logger.Event("SECOND CONNECT");
-                (first_block as Pulse).connected_blocks.Add(blockSel.Block);
+                byEntity.Api.Logger.Event("SECOND CONNECT AT " + blockSel.Position);
+                first_block.connected_blocks.Add(byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as Pulse);
                 first_block = null;
             }
             else
             {
-                byEntity.Api.Logger.Event("FIRST CONNECT");
-                first_block = blockSel.Block;
+                byEntity.Api.Logger.Event("FIRST CONNECT AT " + blockSel.Position);
+                first_block = byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as Pulse;
+                //first_block = blockSel.Block.GetBlockEntity<Pulse>(blockSel);
             }
         }
 

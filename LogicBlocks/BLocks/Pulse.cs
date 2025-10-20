@@ -7,67 +7,65 @@ using Vintagestory.API.Util;
 
 namespace LogicBlocks.Blocks
 {
-
-    internal class Pulse : Block
+    internal class Pulse : BlockEntity, IRenderer
     {
-        public Vec3d position;
-        public List<Block> connected_blocks;
-        public MeshData? mesh_data;
-        public MeshRef? mesh;
+        private ICoreClientAPI? capi;
+        private MeshRef? meshref;
+        public List<BlockEntity> connected_blocks;
+        public double RenderOrder => 0.5;
+        public int RenderRange => 24;
 
         public Pulse()
         {
-
-
-            position = new Vec3d();
-            connected_blocks = [];
+            connected_blocks = new List<BlockEntity>();
         }
 
-        public override void OnLoaded(ICoreAPI api)
+        public override void Initialize(ICoreAPI api)
         {
-            base.OnLoaded(api);
-        }
+            this.capi = api as ICoreClientAPI;
 
-        public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack? byItemStack = null)
-        {            
-            position = blockPos.ToVec3d();
-            base.OnBlockPlaced(world, blockPos, byItemStack);
-        }
+            if (this.capi == null)
+                return;
 
-        public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
-        {
-            foreach (Block block in connected_blocks)
+            this.capi.Event.RegisterRenderer(this, EnumRenderStage.Opaque);
+
+
+            var shape = Shape.TryGet(capi, "logicblocks:shapes/block/mymesh.json");
+            if (shape == null)
             {
-                capi.Logger.Event("FOR CONNECTED BLOCK");
+                this.capi.Logger.Event("CRITICAL: COULD NOT LOAD MYMESH FOR CONNECTIONS");
+                return;
+            }
+            this.capi.Tesselator.TesselateShape(capi.World.BlockAccessor.GetBlock(1), shape, out var meshdata);
+            meshref = this.capi.Render.UploadMesh(meshdata);
+        }
 
-                var pulse = block as Pulse;
-                if (pulse == null)
-                {
-                    capi.Logger.Event("-> CONNECTED BLOCK REMOVED");
-                    return;
-                }
 
-                if (mesh == null)
-                {
-                    Shape shape = Vintagestory.API.Common.Shape.TryGet(api, "logicblocks:shapes/block/mymesh.json");
-                    var tesselator = ((ICoreClientAPI)api).Tesselator;
-                    tesselator.TesselateShape(this, shape, out mesh_data);
-                    mesh = capi.Render.UploadMesh(mesh_data);
-                }
 
-                capi.Logger.Event("RENDERING: " + position.X + ", " + position.Y + ", " + position.Z);
+        public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
+        {
+            if (capi == null || stage != EnumRenderStage.Opaque)
+                return;
+            Vec3d cam = capi.World.Player.Entity.CameraPos;
 
+            //capi.Logger.Event("cam=" + cam);
+            foreach (BlockEntity block in connected_blocks)
+            {
+                if (block == null) continue;
+
+                //capi.Render.GlEnableCullFace();
+                //capi.Render.GLDisableDepthTest();
                 capi.Render.GlPushMatrix();
-                capi.Render.GlTranslate(position.X + 10, position.Y + 10, position.Z + 10);
-                capi.Render.GlScale(3, 3, 3);
-                capi.Render.RenderMesh(mesh);
+                capi.Render.GlScale(2.0f, 2.0f, 2.0f);
+                capi.Render.GlTranslate(block.Pos.X - cam.X - 0.5, block.Pos.Y - cam.Y, block.Pos.Z - cam.Z - 0.5);
+                capi.Render.RenderMesh(meshref);
                 capi.Render.GlPopMatrix();
-
-
-                base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
             }
         }
 
+        public void Dispose()
+        {
+            meshref?.Dispose();
+        }
     }
-
 }

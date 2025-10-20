@@ -10,12 +10,10 @@ namespace LogicBlocks
     public class LogicBlocksModSystem : ModSystem
     {
 
-        //static List<Item> logicBlocks;
-
         public override void Start(ICoreAPI api)
         {
             api.RegisterItemClass(Mod.Info.ModID + ".connector", typeof(Connector));
-            api.RegisterBlockClass(Mod.Info.ModID + ".pulse", typeof(Pulse));
+            api.RegisterBlockEntityClass(Mod.Info.ModID + ".pulse", typeof(Pulse));
         }
 
         public override void StartServerSide(ICoreServerAPI api)
