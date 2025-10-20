@@ -1,4 +1,5 @@
 ﻿using LogicBlocks.Blocks;
+using System.Data;
 using System.Text.RegularExpressions;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -25,17 +26,27 @@ namespace LogicBlocks.Items
             if (first_block != null)
             {
                 byEntity.Api.Logger.Event("SECOND CONNECT AT " + blockSel.Position);
-                first_block.connected_blocks.Add(byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as Pulse);
+                var pulse = byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as Pulse;
+                first_block.connected_blocks.Add(pulse);
                 first_block = null;
             }
             else
             {
                 byEntity.Api.Logger.Event("FIRST CONNECT AT " + blockSel.Position);
-                first_block = byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as Pulse;
-                //first_block = blockSel.Block.GetBlockEntity<Pulse>(blockSel);
+                var block = byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position);
+                if (block == null)
+                {
+                    byEntity.Api.Logger.Event("CRITICAL: BLOCK NOT FOUND AT " + blockSel.Position);
+                    return;
+                }
+                first_block = block as Pulse;
+                if (first_block == null)
+                {
+                    byEntity.Api.Logger.Event("CRITICAL: BLOCK NOT A PULSE AT " + blockSel.Position);
+                    return;
+                }
             }
         }
-
     }
 }
 

@@ -48,13 +48,10 @@ namespace LogicBlocks.Blocks
                 return;
             Vec3d cam = capi.World.Player.Entity.CameraPos;
 
-            //capi.Logger.Event("cam=" + cam);
             foreach (BlockEntity block in connected_blocks)
             {
                 if (block == null) continue;
 
-                //capi.Render.GlEnableCullFace();
-                //capi.Render.GLDisableDepthTest();
                 capi.Render.GlPushMatrix();
                 capi.Render.GlScale(2.0f, 2.0f, 2.0f);
                 capi.Render.GlTranslate(block.Pos.X - cam.X - 0.5, block.Pos.Y - cam.Y, block.Pos.Z - cam.Z - 0.5);
