@@ -2,7 +2,8 @@
   "code": "connector",
   "class": "logicblocks.connector",
   "creativeinventory": {
-    "general": [ "*" ]
+    "general": [ "*" ],
+    "logicblocks":  [ "*" ]
   },
   "texture": {
     "base": "item/connector"

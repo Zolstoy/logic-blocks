@@ -73,9 +73,9 @@ namespace LogicBlocks.Blocks
                 capi.Logger.Event("Angle is " + angle);
                 Matrixf modelMat = new Matrixf()
                     .Identity()
-                    .Translate(block.Pos.X - cam.X, block.Pos.Y - cam.Y + 1, block.Pos.Z - cam.Z)
+                    .Translate(block.Pos.X - cam.X + 0.5, block.Pos.Y - cam.Y + 1, block.Pos.Z - cam.Z + 0.5)
                     .RotateY((float)angle)
-                    .Scale(1f, 1f, 1f);
+                    .Scale(1f, 1f, 10f);
 
                 prog.ModelMatrix = modelMat.Values;
                 prog.ViewMatrix = rpi.CameraMatrixOriginf;
