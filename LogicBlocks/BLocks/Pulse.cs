@@ -68,13 +68,13 @@ namespace LogicBlocks.Blocks
                 var ray = (block.Pos - Pos).ToVec3d();
                 var dist = ray.Length();
                 ray = ray.Normalize();
-                var angle = Math.Acos(ray.Dot(new Vec3d(1, 0, 0)));
+                var angle = Math.Atan2(-ray.Z, ray.X);
 
                 capi.Logger.Event("Angle is " + angle);
                 Matrixf modelMat = new Matrixf()
                     .Identity()
                     .Translate(block.Pos.X - cam.X + 0.5, block.Pos.Y - cam.Y + 1, block.Pos.Z - cam.Z + 0.5)
-                    .RotateY((float)angle)
+                    .RotateY((float)angle - float.Pi / 2)
                     .Scale(1f, 1f, 10f);
 
                 prog.ModelMatrix = modelMat.Values;
