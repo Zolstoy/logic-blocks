@@ -12,8 +12,8 @@ namespace LogicBlocks
 
         public override void Start(ICoreAPI api)
         {
-            api.RegisterItemClass(Mod.Info.ModID + ".connector", typeof(Connector));
-            api.RegisterBlockEntityClass(Mod.Info.ModID + ".pulse", typeof(Pulse));
+            api.RegisterItemClass(this.Mod.Info.ModID + ".connector", typeof(Connector));
+            api.RegisterBlockEntityClass(this.Mod.Info.ModID + ".pulse", typeof(Pulse));
         }
 
         public override void StartServerSide(ICoreServerAPI api)

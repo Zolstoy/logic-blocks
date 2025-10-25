@@ -15,6 +15,7 @@ namespace LogicBlocks.Blocks
     internal class Pulse : BlockEntity, IRenderer
     {
         private ICoreClientAPI? capi;
+        private ICoreServerAPI? sapi;
         private MeshRef? meshref;
         public List<BlockEntity> connected_blocks;
         public List<Vec3i> connected_blocks_coords;
@@ -37,62 +38,96 @@ namespace LogicBlocks.Blocks
         {
             base.FromTreeAttributes(tree, world);
 
-            connected_blocks_coords = SerializerUtil.Deserialize<List<Vec3i>>(
+            this.connected_blocks_coords = SerializerUtil.Deserialize<List<Vec3i>>(
                 tree.GetBytes("connected_blocks_coords")
             );
-        }
-
-        public void connect(BlockEntity logic_block)
-        {
-            if (this.capi != null)
+            if (this.capi != null && this.capi.Side == EnumAppSide.Client)
             {
-                this.capi.Logger.Event("---> CONNECT");
+                this.capi.Logger.Event("UPDADING CONNECTIONS CLIENT SIDE");
+                this.connected_blocks = [];
+                foreach (Vec3i block_coords in connected_blocks_coords)
+                {
+                    var logic_block = capi?.World.BlockAccessor.GetBlockEntity(new BlockPos(block_coords.X, block_coords.Y, block_coords.Z));
+                    if (logic_block != null)
+                    {
+                        this.connected_blocks.Add(logic_block);
+                    }
+                }
             }
-            this.connected_blocks.Add(logic_block);
-            this.connected_blocks_coords.Add(logic_block.Pos.ToVec3i());
-            MarkDirty(true);
         }
 
+        public void Connect(BlockEntity logic_block)
+        {
+            this.capi?.Logger.Event("SENDING PACKET 101");
+            this.capi?.Network.SendBlockEntityPacket(Pos, 101, SerializerUtil.Serialize(logic_block.Pos.ToVec3i()));
+        }
+
+        public override void OnReceivedClientPacket(IPlayer fromPlayer, int packetid, byte[] data)
+        {
+            base.OnReceivedClientPacket(fromPlayer, packetid, data);
+            if (packetid == 101)
+            {
+                var coords = SerializerUtil.Deserialize<Vec3i>(data);
+                this.sapi?.Logger.Event("RECEIVED PACKET 101");
+                var logic_block = sapi?.World.BlockAccessor.GetBlockEntity(new BlockPos(coords.X, coords.Y, coords.Z));
+                if (logic_block != null)
+                {
+                    this.connected_blocks.Add(logic_block);
+                    this.connected_blocks_coords.Add(logic_block.Pos.ToVec3i());
+                    MarkDirty(true);
+                }
+                else
+                {
+                    this.sapi?.Logger.Event($"BLOCK NOT FOUND AT {coords.X},{coords.Y},{coords.Z}");
+                }
+            }
+        }
 
         public override void Initialize(ICoreAPI api)
         {
             if (api as ICoreServerAPI != null)
             {
-                api.Logger.Event($"CONNECTING {connected_blocks_coords.Count} BLOCKS");
-                foreach (Vec3i block_coords in connected_blocks_coords)
+                this.sapi = api as ICoreServerAPI;
+                this.sapi?.Event.EnqueueMainThreadTask(() =>
                 {
-                    connected_blocks.Add(api.World.BlockAccessor.GetBlockEntity(new BlockPos(block_coords, 3)));
-                }
+                    this.sapi?.Logger.Event($"CONNECTING {connected_blocks_coords.Count} BLOCKS");
+                    foreach (var coords in connected_blocks_coords)
+                    {
+                        var be = this.sapi?.World.BlockAccessor.GetBlockEntity(new BlockPos(coords.X, coords.Y, coords.Z));
+                        if (be != null)
+                        {
+                            connected_blocks.Add(be);
+                        }
+                    }
+                }, "restoreconnections");
             }
             if (api as ICoreClientAPI != null)
             {
                 this.capi = api as ICoreClientAPI;
-                if (this.capi == null)
-                    return;
-                api.Logger.Event("===> PULSE INIT CLIENT");
-                this.capi.Event.RegisterRenderer(this, EnumRenderStage.Opaque);
+                this.capi?.Logger.Event("===> PULSE INIT CLIENT");
+                this.capi?.Event.RegisterRenderer(this, EnumRenderStage.Opaque);
 
 
                 var shape = Shape.TryGet(capi, "logicblocks:shapes/block/mymesh.json");
                 if (shape == null)
                 {
-                    this.capi.Logger.Event("CRITICAL: COULD NOT LOAD MYMESH FOR CONNECTIONS");
+                    this.capi?.Logger.Event("CRITICAL: COULD NOT LOAD MYMESH FOR CONNECTIONS");
                     return;
                 }
-                this.capi.Tesselator.TesselateShape(capi.World.BlockAccessor.GetBlock(1), shape, out var meshdata);
-                meshref = this.capi.Render.UploadMesh(meshdata);
+                var meshdata = new MeshData();
+                this.capi?.Tesselator.TesselateShape(capi.World.BlockAccessor.GetBlock(1), shape, out meshdata);
+                if (meshdata != null)
+                    this.meshref = this.capi?.Render.UploadMesh(meshdata);
             }
         }
 
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
-            if (capi == null || stage != EnumRenderStage.Opaque) return;
-            if (meshref == null) return;
+            if (this.capi == null || stage != EnumRenderStage.Opaque) return;
+            if (this.meshref == null) return;
 
-
-
-            IRenderAPI rpi = capi.Render;
-            Vec3d cam = capi.World.Player.Entity.CameraPos;
+            IRenderAPI rpi = this.capi.Render;
+            Vec3d cam = this.capi.World.Player.Entity.CameraPos;
 
             IStandardShaderProgram prog = rpi.StandardShader;
             prog.Use();
@@ -103,7 +138,7 @@ namespace LogicBlocks.Blocks
             prog.FogDensityIn = rpi.FogDensity;
             prog.RgbaLightIn = new Vec4f(1, 1, 1, 1);
             prog.RgbaGlowIn = new Vec4f(0, 0, 0, 0);
-            prog.Tex2D = capi.BlockTextureAtlas.AtlasTextures[0].TextureId;
+            prog.Tex2D = this.capi.BlockTextureAtlas.AtlasTextures[0].TextureId;
 
             foreach (BlockEntity block in connected_blocks)
             {
@@ -116,7 +151,7 @@ namespace LogicBlocks.Blocks
 
                 Matrixf modelMat = new Matrixf()
                     .Identity()
-                    .Translate(Pos.X - cam.X + 0.5 + 0.05, block.Pos.Y - cam.Y + 1, Pos.Z - cam.Z + 0.5 + 0.05)
+                    .Translate(Pos.X - cam.X + 0.5, block.Pos.Y - cam.Y + 1, Pos.Z - cam.Z + 0.5)
                     .RotateY((float)angle + float.Pi / 2)
                     .Scale(1f, 1f, (float)dist * 10f);
 
@@ -133,7 +168,7 @@ namespace LogicBlocks.Blocks
 
         public void Dispose()
         {
-            meshref?.Dispose();
+            this.meshref?.Dispose();
         }
     }
 }

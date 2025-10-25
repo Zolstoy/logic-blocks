@@ -7,14 +7,14 @@ using Vintagestory.API.Util;
 
 namespace LogicBlocks.Items
 {
-    internal class Connector : Item
+    internal partial class Connector : Item
     {
         Pulse? first_block;
 
         public override void OnHeldUseStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel,
             EnumHandInteract useType, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (useType != EnumHandInteract.HeldItemInteract || blockSel == null || Regex.Count(blockSel.Block.Code.ToString(), "^logicblocks:.*") == 0)
+            if (useType != EnumHandInteract.HeldItemInteract || blockSel == null || MyRegex().Count(blockSel.Block.Code.ToString()) == 0)
                 return;
             var system = byEntity.Api.ModLoader.GetModSystem<LogicBlocksModSystem>();
             if (system == null)
@@ -23,17 +23,16 @@ namespace LogicBlocks.Items
                 return;
             }
 
-            if (first_block != null)
+            if (this.first_block != null)
             {
                 byEntity.Api.Logger.Event("SECOND CONNECT AT " + blockSel.Position);
-                var pulse = byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as Pulse;
-                if (pulse == null)
+                if (byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is not Pulse pulse)
                 {
                     byEntity.Api.Logger.Event("CRITICAL: BLOCK NOT A PULSE AT " + blockSel.Position);
                     return;
                 }
-                first_block.connect(pulse);
-                first_block = null;
+                this.first_block.Connect(pulse);
+                this.first_block = null;
             }
             else
             {
@@ -44,14 +43,17 @@ namespace LogicBlocks.Items
                     byEntity.Api.Logger.Event("CRITICAL: BLOCK NOT FOUND AT " + blockSel.Position);
                     return;
                 }
-                first_block = block as Pulse;
-                if (first_block == null)
+                this.first_block = block as Pulse;
+                if (this.first_block == null)
                 {
                     byEntity.Api.Logger.Event("CRITICAL: BLOCK NOT A PULSE AT " + blockSel.Position);
                     return;
                 }
             }
         }
+
+        [GeneratedRegex("^logicblocks:.*")]
+        private static partial Regex MyRegex();
     }
 }
 
