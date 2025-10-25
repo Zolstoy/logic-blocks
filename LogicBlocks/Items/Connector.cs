@@ -32,7 +32,7 @@ namespace LogicBlocks.Items
                     byEntity.Api.Logger.Event("CRITICAL: BLOCK NOT A PULSE AT " + blockSel.Position);
                     return;
                 }
-                first_block.connected_blocks.Add(pulse);
+                first_block.connect(pulse);
                 first_block = null;
             }
             else
