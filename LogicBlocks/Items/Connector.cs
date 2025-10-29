@@ -9,12 +9,12 @@ namespace LogicBlocks.Items
 {
     internal partial class Connector : Item
     {
-        Logical? first_block;
+        Logic? first_block;
 
         public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, BlockSelection blockSel, float dropQuantityMultiplier = 1)
         {
-            if (byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is Activable logic_block)
-                logic_block.Activate();
+            if (byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is Activator logic_block)
+                logic_block.Interact();
             return false;
         }
 
@@ -24,16 +24,29 @@ namespace LogicBlocks.Items
             base.OnHeldUseStart(slot, byEntity, blockSel, entitySel, useType, firstEvent, ref handling);
             if (useType == EnumHandInteract.HeldItemInteract)
             {
-                if (byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is not Logical logic_block)
-                    return;
+
                 if (this.first_block != null)
                 {
-                    if (blockSel.Position != this.first_block.Pos)    
-                        this.first_block.Connect(logic_block);
+                    if (blockSel.Position == this.first_block.Pos)
+                    {
+                        this.first_block.Unselect();
+                        this.first_block = null;
+                        return;
+                    }
+
+                    if (byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is not Gate gate_block)
+                        return;
+                    this.first_block.Connect(gate_block);
+                    this.first_block.Unselect();
                     this.first_block = null;
                 }
                 else
-                    this.first_block = logic_block;
+                {
+                    if (byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is not Logic logical_block)
+                        return;
+                    this.first_block = logical_block;
+                    this.first_block.Select();
+                }
             }
         }
 

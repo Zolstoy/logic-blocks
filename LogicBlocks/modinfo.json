@@ -1,14 +1,14 @@
 {
-    "$schema": "https://moddbcdn.vintagestory.at/schema/modinfo.latest.json",
-    "type": "Code",
-    "modid": "logicblocks",
-    "name": "LogicBlocks",
-    "authors": [
-        "Unknown"
-    ],
-    "description": "To be added",
-    "version": "1.0.0",
-    "dependencies": {
-        "game": "1.21.0"
-    }
+  "$schema": "https://moddbcdn.vintagestory.at/schema/modinfo.latest.json",
+  "type": "Code",
+  "modid": "logicblocks",
+  "name": "LogicBlocks",
+  "authors": [
+    "Zolstoy"
+  ],
+  "description": "This mod is in beta state and should be used in creative mode only.",
+  "version": "0.2.0",
+  "dependencies": {
+    "game": "1.21.0"
+  }
 }

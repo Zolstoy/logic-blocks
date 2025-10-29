@@ -1,0 +1,21 @@
+{
+  "elements": [
+    {
+      //"from": [ -256, -256, -256 ],
+      //"to": [ 256, 256, 256 ],
+      "from": [ -8, -8, -8 ],
+      "to": [ 8, 8, 8 ],
+      "faces": {
+        "north": { "texture": "#all" },
+        "south": { "texture": "#all" },
+        "east": { "texture": "#all" },
+        "west": { "texture": "#all" },
+        "up": { "texture": "#all" },
+        "down": { "texture": "#all" }
+      }
+    }
+  ],
+  "textures": {
+    "all": "block/notgate_triggered"
+  }
+}
