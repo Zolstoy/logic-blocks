@@ -1,6 +1,5 @@
 ﻿using System;
 using Vintagestory.API.Common;
-using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 

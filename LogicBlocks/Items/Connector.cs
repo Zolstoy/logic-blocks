@@ -1,9 +1,6 @@
 ﻿using LogicBlocks.Blocks;
-using System.Data;
-using System.Text.RegularExpressions;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Util;
 
 namespace LogicBlocks.Items
 {
@@ -50,9 +47,6 @@ namespace LogicBlocks.Items
                 }
             }
         }
-
-        [GeneratedRegex("^logicblocks:.*")]
-        private static partial Regex MyRegex();
     }
 }
 
