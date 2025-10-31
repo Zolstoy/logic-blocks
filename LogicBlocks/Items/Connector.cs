@@ -24,7 +24,8 @@ namespace LogicBlocks.Items
             base.OnHeldUseStart(slot, byEntity, blockSel, entitySel, useType, firstEvent, ref handling);
             if (useType == EnumHandInteract.HeldItemInteract)
             {
-
+                if (blockSel == null)
+                    return;
                 if (this.first_block != null)
                 {
                     if (blockSel.Position == this.first_block.Pos)
@@ -42,9 +43,9 @@ namespace LogicBlocks.Items
                 }
                 else
                 {
-                    if (byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is not Logic logical_block)
+                    if (byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is not Logic logic_block)
                         return;
-                    this.first_block = logical_block;
+                    this.first_block = logic_block;
                     this.first_block.Select();
                 }
             }

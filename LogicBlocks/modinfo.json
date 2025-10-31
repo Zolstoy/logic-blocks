@@ -7,7 +7,7 @@
     "Zolstoy"
   ],
   "description": "This mod is in beta state and should be used in creative mode only.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "dependencies": {
     "game": "1.21.0"
   }
