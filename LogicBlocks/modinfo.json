@@ -2,13 +2,13 @@
   "$schema": "https://moddbcdn.vintagestory.at/schema/modinfo.latest.json",
   "type": "Code",
   "modid": "logicblocks",
-  "name": "LogicBlocks",
+  "name": "Logic Blocks",
   "authors": [
     "Zolstoy"
   ],
-  "description": "This mod is in beta state and should be used in creative mode only.",
-  "version": "0.2.1",
+  "description": "(beta) This mod provides blocks for logic and interactions with gates.",
+  "version": "0.3.0",
   "dependencies": {
-    "game": "1.21.0"
+    "game": "1.21.5"
   }
 }

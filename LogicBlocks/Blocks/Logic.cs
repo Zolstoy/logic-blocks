@@ -41,23 +41,24 @@ namespace LogicBlocks.Blocks
             public List<Logic> parent_blocks = parent_blocks;
         }
 
-        protected class ClientResources(ICoreClientAPI api, MeshRef connection_false_meshref, MeshRef connection_true_meshref, MeshRef triggered_meshref, MeshRef selected_meshref, List<Vec3i> connected_coords)
+        protected class ClientResources(ICoreClientAPI api, MeshRef connection_false_meshref, MeshRef connection_true_meshref, MeshRef triggered_meshref, MeshRef selected_meshref, List<BlockPos> connected_coords)
         {
             public ICoreClientAPI api = api;
             public MeshRef connection_false_meshref = connection_false_meshref;
             public MeshRef connection_true_meshref = connection_true_meshref;
             public MeshRef triggered_meshref = triggered_meshref;
             public MeshRef selected_meshref = selected_meshref;
-            public List<Vec3i> connected_coords = connected_coords;
+            public List<BlockPos> connected_coords = connected_coords;
             internal bool selected = false;
             internal float render_timer;
         }
 
-        public List<Vec3i> connected_coords = [];
+        public List<BlockPos> connected_coords = [];
         public bool state = false;
+        private BlockPos position = new(3);
         protected ServerResources? server;
         protected ClientResources? client;
-
+        private bool placed = false;
 
         public double RenderOrder => 0.5;
         public int RenderRange => 24;
@@ -68,23 +69,25 @@ namespace LogicBlocks.Blocks
                 throw new InvalidOperationException();
             this.server.parent_blocks.RemoveAll(b => b.Pos == pos);
             this.server.connected_blocks.RemoveAll(b => b.Pos == pos);
-            this.connected_coords.RemoveAll(b => b == pos.ToVec3i());
+            this.connected_coords.RemoveAll(b => b == pos);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
-            tree.SetBytes("connected_blocks_coords", SerializerUtil.Serialize(this.connected_coords));
-            tree.SetBytes("state", SerializerUtil.Serialize(this.state));
+            tree.SetBytes("logic:connected_blocks_coords", SerializerUtil.Serialize(this.connected_coords));
+            tree.SetBytes("logic:state", SerializerUtil.Serialize(this.state));
+            tree.SetBytes("logic:position", SerializerUtil.Serialize(base.Pos));
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor world)
         {
             base.FromTreeAttributes(tree, world);
-            this.connected_coords = SerializerUtil.Deserialize<List<Vec3i>>(
-                tree.GetBytes("connected_blocks_coords")
+            this.connected_coords = SerializerUtil.Deserialize<List<BlockPos>>(
+                tree.GetBytes("logic:connected_blocks_coords")
             );
-            this.state = SerializerUtil.Deserialize<bool>(tree.GetBytes("state"));
+            this.state = SerializerUtil.Deserialize<bool>(tree.GetBytes("logic:state"));
+            this.position = SerializerUtil.Deserialize<BlockPos>(tree.GetBytes("logic:position"));
         }
 
         public override void OnReceivedServerPacket(int packetid, byte[] data)
@@ -93,10 +96,10 @@ namespace LogicBlocks.Blocks
                 throw new InvalidOperationException();
             base.OnReceivedServerPacket(packetid, data);
             if (packetid == (int)ServerState.Sync)
-                this.client.connected_coords = SerializerUtil.Deserialize<List<Vec3i>>(data);
+                this.client.connected_coords = SerializerUtil.Deserialize<List<BlockPos>>(data);
             else if (packetid == (int)ServerState.Remove)
             {
-                var pos = SerializerUtil.Deserialize<Vec3i>(data);
+                var pos = SerializerUtil.Deserialize<BlockPos>(data);
                 this.client.connected_coords.Remove(pos);
             }
             else if (packetid == (int)ServerState.ChangeState)
@@ -164,13 +167,13 @@ namespace LogicBlocks.Blocks
                         if (already_connected)
                         {
                             this.server.connected_blocks.Remove(gate_block);
-                            this.connected_coords.Remove(gate_block.Pos.ToVec3i());
+                            this.connected_coords.Remove(gate_block.Pos);
                             gate_block.server.parent_blocks.Remove(this);
                         }
                         else
                         {
                             this.server.connected_blocks.Add(gate_block);
-                            this.connected_coords.Add(gate_block.Pos.ToVec3i());
+                            this.connected_coords.Add(gate_block.Pos);
                             gate_block.server.parent_blocks.Add(this);
                             gate_block.Refresh();
                         }
@@ -185,7 +188,7 @@ namespace LogicBlocks.Blocks
             }
             else if (packetid == (int)ClientAction.Destroy)
             {
-                //this.server.connected_blocks = [];
+                this.server.connected_blocks = [];
                 this.server.system.BroadcastRemove(this.Pos);
             }
             else if (packetid == (int)ClientAction.GetState)
@@ -201,33 +204,74 @@ namespace LogicBlocks.Blocks
                 this.server.api.Network.SendBlockEntityPacket(player as IServerPlayer, Pos, (int)ServerState.Sync, to_send);
         }
 
+        public override void OnPlacementBySchematic(ICoreServerAPI api, IBlockAccessor blockAccessor, BlockPos pos, Dictionary<int, Dictionary<int, int>> replaceBlocks, int centerrockblockid, Block layerBlock, bool resolveImports)
+        {
+            base.OnPlacementBySchematic(api, blockAccessor, pos, replaceBlocks, centerrockblockid, layerBlock, resolveImports);
+
+            if (this.server == null)
+                throw new InvalidOperationException();
+
+            this.placed = true;
+        }
+
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
+
             if (api is ICoreServerAPI sapi)
             {
-                List<Gate> connected_blocks = [];
-                foreach (var coords in this.connected_coords)
-                {
-                    var block = sapi.World.BlockAccessor.GetBlockEntity(new BlockPos(coords.X, coords.Y, coords.Z));
-                    if (block is Gate logic_block)
-                        connected_blocks.Add(logic_block);
-                }
                 var system = sapi.ModLoader.GetModSystem<LogicBlocksModSystem>();
                 system.RegisterLogicBlock(this);
                 sapi.Event.EnqueueMainThreadTask(() =>
                 {
                     if (this.server == null)
                         throw new InvalidOperationException();
+
+                    if (this.placed)
+                    {
+                        var delta = base.Pos - this.position;
+                        if (delta.ToVec3d().Length() == 0)
+                            throw new InvalidOperationException("Delta = 0??");
+                        var new_connected_coords = new List<BlockPos>();
+                        for (int i = 0; i < this.connected_coords.Count; ++i)
+                        {
+                            var coords = this.connected_coords[i];
+                            coords += delta;
+                            var block = this.server.api.World.BlockAccessor.GetBlockEntity(new BlockPos(coords.X, coords.Y, coords.Z));
+                            if (block is not Gate gate_block)
+                                continue;
+                            if (!gate_block.placed)
+                            {
+                                this.server.api.Logger.Event($"BLOCKED HAS NOT BEEN PLACED");
+                                continue;
+                            }
+
+                            new_connected_coords.Add(coords);
+                        }
+                        this.connected_coords = new_connected_coords;
+                        this.server.api.Event.EnqueueMainThreadTask(() =>
+                        {
+                            this.position = base.Pos;
+                            this.placed = false;
+                        }, $"resetplaced:${this.Pos}");
+                    }
+
+                    foreach (var coords in this.connected_coords)
+                    {
+                        var block = sapi.World.BlockAccessor.GetBlockEntity(new BlockPos(coords.X, coords.Y, coords.Z));
+                        if (block is Gate logic_block)
+                            this.server.connected_blocks.Add(logic_block);
+                    }
+
                     foreach (var block in this.server.connected_blocks)
                     {
                         if (block.server == null)
                             throw new InvalidOperationException();
                         block.server.parent_blocks.Add(this);
                     }
-
-                }, $"logicblocks:restoreparents");
-                this.server = new ServerResources(sapi, system, connected_blocks, []);
+                }, $"logicblocks:restore:{this.Pos}");
+                this.position = base.Pos;
+                this.server = new ServerResources(sapi, system, [], []);
             }
             if (api is ICoreClientAPI capi)
             {
@@ -263,9 +307,9 @@ namespace LogicBlocks.Blocks
 
             prog.Tex2D = this.client.api.BlockTextureAtlas.AtlasTextures[0].TextureId;
 
-            foreach (Vec3i block in this.client.connected_coords)
+            foreach (BlockPos block in this.client.connected_coords)
             {
-                var rayi = (block - Pos.ToVec3i());
+                var rayi = (block - Pos);
                 var ray = new Vec3d(rayi.X, rayi.Y, rayi.Z);
                 var dist = ray.Length();
                 ray = ray.Normalize();
@@ -386,11 +430,7 @@ namespace LogicBlocks.Blocks
 
         public void Dispose()
         {
-            if (this.client != null)
-            {
-                this.client.connection_false_meshref.Dispose();
-                this.client.triggered_meshref.Dispose();
-            }
+            this.client?.api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
             GC.SuppressFinalize(this);
         }
     }

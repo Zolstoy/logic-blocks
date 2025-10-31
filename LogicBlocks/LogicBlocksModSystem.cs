@@ -2,6 +2,7 @@
 using LogicBlocks.Items;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -17,7 +18,6 @@ namespace LogicBlocks
         private ICoreAPI? api;
         private readonly List<Logic> logic_blocks;
         private readonly Dictionary<String, MeshRef> meshes;
-
         public LogicBlocksModSystem()
         {
             logic_blocks = [];
@@ -29,7 +29,7 @@ namespace LogicBlocks
             this.api = api;
             this.api.RegisterItemClass(this.Mod.Info.ModID + ".connector", typeof(Connector));
             this.api.RegisterBlockEntityClass(this.Mod.Info.ModID + ".pulse", typeof(Pulse));
-            this.api.RegisterBlockEntityClass(this.Mod.Info.ModID + ".switch", typeof(Switch));
+            this.api.RegisterBlockEntityClass(this.Mod.Info.ModID + ".switch", typeof(LogicBlocks.Blocks.Switch));
             this.api.RegisterBlockEntityClass(this.Mod.Info.ModID + ".andgate", typeof(And));
             this.api.RegisterBlockEntityClass(this.Mod.Info.ModID + ".orgate", typeof(Or));
             this.api.RegisterBlockEntityClass(this.Mod.Info.ModID + ".notgate", typeof(Not));
@@ -75,6 +75,14 @@ namespace LogicBlocks
             }
 
             return value;
+        }
+
+        public override void Dispose()
+        {
+            if (this.api is not ICoreClientAPI capi)
+                return;
+            foreach (var var in this.meshes)
+                capi.Render.DeleteMesh(var.Value);
         }
     }
 }
