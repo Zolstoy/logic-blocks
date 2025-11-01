@@ -1,17 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Numerics;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace LogicBlocks.Blocks
 {
@@ -33,12 +27,11 @@ namespace LogicBlocks.Blocks
             ChangeState = 203
         }
 
-        public class ServerResources(ICoreServerAPI api, LogicBlocksModSystem system, List<Gate> connected_blocks, List<Logic> parent_blocks)
+        public class ServerResources(ICoreServerAPI api)
         {
             public ICoreServerAPI api = api;
-            public LogicBlocksModSystem system = system;
-            public List<Gate> connected_blocks = connected_blocks;
-            public List<Logic> parent_blocks = parent_blocks;
+            public List<Gate> connected_blocks = [];
+            public List<Logic> parent_blocks = [];
         }
 
         protected class ClientResources(ICoreClientAPI api, MeshRef connection_false_meshref, MeshRef connection_true_meshref, MeshRef triggered_meshref, MeshRef selected_meshref, List<BlockPos> connected_coords)
@@ -104,15 +97,6 @@ namespace LogicBlocks.Blocks
             }
             else if (packetid == (int)ServerState.ChangeState)
                 this.state = SerializerUtil.Deserialize<bool>(data);
-        }
-
-        public override void OnBlockBroken(IPlayer byPlayer)
-        {
-            if (this.client == null)
-                return;
-            base.OnBlockBroken(byPlayer);
-            this.client.api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
-            this.client.api.Network.SendBlockEntityPacket(Pos, (int)ClientAction.Destroy, SerializerUtil.Serialize(Pos));
         }
 
         internal void Select()
@@ -186,11 +170,10 @@ namespace LogicBlocks.Blocks
             {
                 this.Sync();
             }
-            else if (packetid == (int)ClientAction.Destroy)
-            {
-                this.server.connected_blocks = [];
-                this.server.system.BroadcastRemove(this.Pos);
-            }
+            //else if (packetid == (int)ClientAction.Destroy)
+            //{
+
+            //}
             else if (packetid == (int)ClientAction.GetState)
                 this.server.api.Network.SendBlockEntityPacket(fromPlayer as IServerPlayer, Pos, (int)ServerState.ChangeState, SerializerUtil.Serialize<bool>(this.state));
         }
@@ -208,6 +191,7 @@ namespace LogicBlocks.Blocks
         {
             base.OnPlacementBySchematic(api, blockAccessor, pos, replaceBlocks, centerrockblockid, layerBlock, resolveImports);
 
+            base.Api.Logger.Event($"ON PLACEMENT BY SCHEMATIC: side={Api.Side}");
             if (this.server == null)
                 throw new InvalidOperationException();
 
@@ -218,10 +202,9 @@ namespace LogicBlocks.Blocks
         {
             base.Initialize(api);
 
+            base.Api.Logger.Event($"INITIALIZE: side={Api.Side}");
             if (api is ICoreServerAPI sapi)
             {
-                var system = sapi.ModLoader.GetModSystem<LogicBlocksModSystem>();
-                system.RegisterLogicBlock(this);
                 sapi.Event.EnqueueMainThreadTask(() =>
                 {
                     if (this.server == null)
@@ -230,8 +213,6 @@ namespace LogicBlocks.Blocks
                     if (this.placed)
                     {
                         var delta = base.Pos - this.position;
-                        if (delta.ToVec3d().Length() == 0)
-                            throw new InvalidOperationException("Delta = 0??");
                         var new_connected_coords = new List<BlockPos>();
                         for (int i = 0; i < this.connected_coords.Count; ++i)
                         {
@@ -241,17 +222,13 @@ namespace LogicBlocks.Blocks
                             if (block is not Gate gate_block)
                                 continue;
                             if (!gate_block.placed)
-                            {
-                                this.server.api.Logger.Event($"BLOCKED HAS NOT BEEN PLACED");
                                 continue;
-                            }
 
                             new_connected_coords.Add(coords);
                         }
                         this.connected_coords = new_connected_coords;
                         this.server.api.Event.EnqueueMainThreadTask(() =>
                         {
-                            this.position = base.Pos;
                             this.placed = false;
                         }, $"resetplaced:${this.Pos}");
                     }
@@ -271,7 +248,7 @@ namespace LogicBlocks.Blocks
                     }
                 }, $"logicblocks:restore:{this.Pos}");
                 this.position = base.Pos;
-                this.server = new ServerResources(sapi, system, [], []);
+                this.server = new ServerResources(sapi);
             }
             if (api is ICoreClientAPI capi)
             {
@@ -286,11 +263,10 @@ namespace LogicBlocks.Blocks
                 capi.Network.SendBlockEntityPacket(Pos, (int)ClientAction.Sync, SerializerUtil.Serialize(""));
 
                 this.client = new ClientResources(capi, connection_false_meshref, connection_true_meshref, triggered_meshref, selected_meshref, []);
-
             }
         }
 
-        private void RenderConnection(IRenderAPI rpi, Vec3d cam)
+        private void Render(IRenderAPI rpi, Matrixf modelMat, MeshRef mesh)
         {
             if (this.client == null)
                 return;
@@ -306,6 +282,39 @@ namespace LogicBlocks.Blocks
             prog.RgbaGlowIn = new Vec4f(0, 0, 0, 0);
 
             prog.Tex2D = this.client.api.BlockTextureAtlas.AtlasTextures[0].TextureId;
+
+            prog.ModelMatrix = modelMat.Values;
+            prog.ViewMatrix = rpi.CameraMatrixOriginf;
+            prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
+
+            rpi.RenderMesh(mesh);
+
+            prog.Stop();
+        }
+
+
+        public void OnRenderFrame(float delta, EnumRenderStage stage)
+        {
+            if (this.client == null || stage != EnumRenderStage.Opaque)
+                return;
+
+            IRenderAPI rpi = this.client.api.Render;
+            Vec3d cam = this.client.api.World.Player.Entity.CameraPos;
+
+            if (this.client.selected)
+            {
+                var translation = Pos.ToVec3d() + new Vec3d(0.5, 0.5, 0.5) - cam;
+
+                this.client.render_timer += delta;
+                float scale_factor = 1.001f + ((float)Math.Sin(this.client.render_timer) + 1.01f) / 10f;
+
+                Matrixf modelMat = new Matrixf()
+                    .Identity()
+                    .Translate(translation.X, translation.Y, translation.Z)
+                    .RotateY((float)Math.PI)
+                    .Scale(scale_factor, scale_factor, scale_factor);
+                this.Render(rpi, modelMat, this.client.selected_meshref);
+            }
 
             foreach (BlockPos block in this.client.connected_coords)
             {
@@ -323,114 +332,47 @@ namespace LogicBlocks.Blocks
                     .RotateX((float)-angleZ)
                     .Scale(0.1f, 0.1f, (float)dist);
 
-                prog.ModelMatrix = modelMat.Values;
-                prog.ViewMatrix = rpi.CameraMatrixOriginf;
-                prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
 
                 if (this.state)
-                    rpi.RenderMesh(this.client.connection_true_meshref);
+                    this.Render(rpi, modelMat, this.client.connection_true_meshref);
                 else
-                    rpi.RenderMesh(this.client.connection_false_meshref);
+                    this.Render(rpi, modelMat, this.client.connection_false_meshref);
             }
 
-            prog.Stop();
-        }
-
-        private void RenderTriggered(IRenderAPI rpi, Vec3d cam)
-        {
-            if (this.client == null || this.client.triggered_meshref == null)
-                return;
-
-            IStandardShaderProgram prog = rpi.StandardShader;
-            prog.Use();
-
-            prog.RgbaAmbientIn = rpi.AmbientColor;
-            prog.RgbaFogIn = rpi.FogColor;
-            prog.FogMinIn = rpi.FogMin;
-            prog.FogDensityIn = rpi.FogDensity;
-            prog.RgbaLightIn = new Vec4f(1, 1, 1, 1);
-            prog.RgbaGlowIn = new Vec4f(0, 0, 0, 0);
-
-            prog.Tex2D = this.client.api.BlockTextureAtlas.AtlasTextures[0].TextureId;
-
-            var translation = Pos.ToVec3d() + new Vec3d(0.5, 0.5, 0.5) - cam;
-
-            Matrixf modelMat = new Matrixf()
-                .Identity()
-                .Translate(translation.X, translation.Y, translation.Z)
-                .RotateY((float)Math.PI)
-                .Scale(1.001f, 1.001f, 1.001f);
-
-            prog.ModelMatrix = modelMat.Values;
-            prog.ViewMatrix = rpi.CameraMatrixOriginf;
-            prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-
-            rpi.RenderMesh(this.client.triggered_meshref);
-
-            prog.Stop();
-        }
-
-        private void RenderSelected(IRenderAPI rpi, Vec3d cam, float delta)
-        {
-            if (this.client == null || this.client.triggered_meshref == null)
-                return;
-
-            IStandardShaderProgram prog = rpi.StandardShader;
-            prog.Use();
-
-            prog.RgbaAmbientIn = rpi.AmbientColor;
-            prog.RgbaFogIn = rpi.FogColor;
-            prog.FogMinIn = rpi.FogMin;
-            prog.FogDensityIn = rpi.FogDensity;
-            prog.RgbaLightIn = new Vec4f(1, 1, 1, 1);
-            prog.RgbaGlowIn = new Vec4f(0, 0, 0, 0);
-
-            prog.Tex2D = this.client.api.BlockTextureAtlas.AtlasTextures[0].TextureId;
-
-            var translation = Pos.ToVec3d() + new Vec3d(0.5, 0.5, 0.5) - cam;
-
-            this.client.render_timer += delta;
-            float scale_factor = 1.001f + ((float)Math.Sin(this.client.render_timer) + 1.01f) / 10f;
-
-            Matrixf modelMat = new Matrixf()
-                .Identity()
-                .Translate(translation.X, translation.Y, translation.Z)
-                .RotateY((float)Math.PI)
-                .Scale(scale_factor, scale_factor, scale_factor);
-
-            prog.ModelMatrix = modelMat.Values;
-            prog.ViewMatrix = rpi.CameraMatrixOriginf;
-            prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-
-            rpi.RenderMesh(this.client.selected_meshref);
-
-            prog.Stop();
-        }
-
-
-        public void OnRenderFrame(float delta, EnumRenderStage stage)
-        {
-            if (this.client == null || stage != EnumRenderStage.Opaque)
-                return;
-
-            IRenderAPI rpi = this.client.api.Render;
-            Vec3d cam = this.client.api.World.Player.Entity.CameraPos;
-
-            if (this.client.selected)
-                this.RenderSelected(rpi, cam, delta);
-
-            if (this.client.connected_coords.Count > 0)
-                this.RenderConnection(rpi, cam);
-
             if (this.state)
-                this.RenderTriggered(rpi, cam);
+            {
+                var translation = Pos.ToVec3d() + new Vec3d(0.5, 0.5, 0.5) - cam;
 
+                Matrixf modelMat = new Matrixf()
+                    .Identity()
+                    .Translate(translation.X, translation.Y, translation.Z)
+                    .RotateY((float)Math.PI)
+                    .Scale(1.001f, 1.001f, 1.001f);
+                this.Render(rpi, modelMat, this.client.triggered_meshref);
+            }
         }
 
+        public override void OnBlockRemoved()
+        {
+            if (this.client != null)
+            {
+                this.client.api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
+                //this.client.api.Network.SendBlockEntityPacket(Pos, (int)ClientAction.Destroy, SerializerUtil.Serialize(Pos));
+            }
+            else if (this.server != null)
+            {
+                foreach (var connected_block in this.server.connected_blocks)
+                    connected_block.Remove(this.Pos);
+                foreach (var parent_block in this.server.parent_blocks)
+                {
+                    parent_block.Remove(this.Pos);
+                    parent_block.Sync();
+                }
+            }
+        }
 
         public void Dispose()
         {
-            this.client?.api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
             GC.SuppressFinalize(this);
         }
     }
