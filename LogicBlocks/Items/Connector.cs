@@ -22,7 +22,18 @@ namespace LogicBlocks.Items
             if (useType == EnumHandInteract.HeldItemInteract)
             {
                 if (blockSel == null)
+                {
+                    this.first_block?.Unselect();
+                    this.first_block = null;
                     return;
+                }
+
+                if (this.first_block != null)
+                {
+                    if (byEntity.Api.World.BlockAccessor.GetBlockEntity(this.first_block.Pos) is not Logic logic_block)
+                        this.first_block = null;
+                }
+
                 if (this.first_block != null)
                 {
                     if (blockSel.Position == this.first_block.Pos)
@@ -33,10 +44,17 @@ namespace LogicBlocks.Items
                     }
 
                     if (byEntity.Api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is not Gate gate_block)
+                    {
+                        this.first_block.Unselect();
+                        this.first_block = null;
                         return;
+                    }
+                    if (byEntity.Api.World.BlockAccessor.GetBlockEntity(this.first_block.Pos) is not Logic)
+                    {
+                        this.first_block = null;
+                        return;
+                    }
                     this.first_block.Connect(gate_block);
-                    this.first_block.Unselect();
-                    this.first_block = null;
                 }
                 else
                 {

@@ -34,13 +34,14 @@ namespace LogicBlocks.Blocks
             public List<Logic> parent_blocks = [];
         }
 
-        protected class ClientResources(ICoreClientAPI api, MeshRef connection_false_meshref, MeshRef connection_true_meshref, MeshRef triggered_meshref, MeshRef selected_meshref, List<BlockPos> connected_coords)
+        protected class ClientResources(ICoreClientAPI api, MeshRef connection_false_meshref, MeshRef connection_true_meshref, MeshRef triggered_meshref, MeshRef selected_meshref, MeshRef connected_meshref, List<BlockPos> connected_coords)
         {
             public ICoreClientAPI api = api;
             public MeshRef connection_false_meshref = connection_false_meshref;
             public MeshRef connection_true_meshref = connection_true_meshref;
             public MeshRef triggered_meshref = triggered_meshref;
             public MeshRef selected_meshref = selected_meshref;
+            public MeshRef connected_meshref = connected_meshref;
             public List<BlockPos> connected_coords = connected_coords;
             internal bool selected = false;
             internal float render_timer;
@@ -150,6 +151,7 @@ namespace LogicBlocks.Blocks
                             }
                         if (already_connected)
                         {
+                            gate_block.server.parent_blocks.Remove(this);
                             this.server.connected_blocks.Remove(gate_block);
                             this.connected_coords.Remove(gate_block.Pos);
                             gate_block.server.parent_blocks.Remove(this);
@@ -161,7 +163,7 @@ namespace LogicBlocks.Blocks
                             gate_block.server.parent_blocks.Add(this);
                             gate_block.Refresh();
                         }
-
+                        gate_block.Refresh();
                         this.Sync();
                     }
                 }
@@ -252,11 +254,12 @@ namespace LogicBlocks.Blocks
                 var connection_false_meshref = system.UploadMesh($"logicblocks:connection_false");
                 var connection_true_meshref = system.UploadMesh($"logicblocks:connection_true");
                 var triggered_meshref = system.UploadMesh($"logicblocks:{this.Block.Code.GetName()}_triggered");
+                var connected_meshref = system.UploadMesh($"logicblocks:connected");
 
                 capi.Event.RegisterRenderer(this, EnumRenderStage.Opaque);
                 capi.Network.SendBlockEntityPacket(Pos, (int)ClientAction.Sync, SerializerUtil.Serialize(""));
 
-                this.client = new ClientResources(capi, connection_false_meshref, connection_true_meshref, triggered_meshref, selected_meshref, []);
+                this.client = new ClientResources(capi, connection_false_meshref, connection_true_meshref, triggered_meshref, selected_meshref, connected_meshref, []);
             }
         }
 
@@ -331,6 +334,21 @@ namespace LogicBlocks.Blocks
                     this.Render(rpi, modelMat, this.client.connection_true_meshref);
                 else
                     this.Render(rpi, modelMat, this.client.connection_false_meshref);
+
+                if (this.client.selected)
+                {
+                    translation = block.ToVec3d() + new Vec3d(0.5, 0.5, 0.5) - cam;
+
+                    this.client.render_timer += delta;
+                    float scale_factor = 1.001f + ((float)Math.Sin(this.client.render_timer) + 1.01f) / 10f;
+
+                    modelMat = new Matrixf()
+                        .Identity()
+                        .Translate(translation.X, translation.Y, translation.Z)
+                        .RotateY((float)Math.PI)
+                        .Scale(scale_factor, scale_factor, scale_factor);
+                    this.Render(rpi, modelMat, this.client.connected_meshref);
+                }
             }
 
             if (this.state)
