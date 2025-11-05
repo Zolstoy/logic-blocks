@@ -187,6 +187,7 @@ namespace LogicBlocks.Blocks
 
         public override void OnPlacementBySchematic(ICoreServerAPI api, IBlockAccessor blockAccessor, BlockPos pos, Dictionary<int, Dictionary<int, int>> replaceBlocks, int centerrockblockid, Block layerBlock, bool resolveImports)
         {
+            api.Logger.Event("ON PLACEMENT BY SCHEMATIC");
             base.OnPlacementBySchematic(api, blockAccessor, pos, replaceBlocks, centerrockblockid, layerBlock, resolveImports);
 
             if (this.server == null)
